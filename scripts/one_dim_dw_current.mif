@@ -1,0 +1,81 @@
+# MIF 2.2
+
+# -----------------------------------------------------------------------------
+
+set PI [expr {4 * atan(1.)}]
+set MU0 [expr {4 * $PI * 1e-7}]
+
+set ALPHA [expr {0.95}]
+set GAMMA [expr {2.21e5}]
+
+SetOptions {
+    basename "one-dim-dw-DYN"
+    vector_field_output_format {text %.15g}
+    vector_field_output_meshtype irregular
+}
+
+# -----------------------------------------------------------------------------
+
+Specify Oxs_BoxAtlas:Atlas [subst {
+    xrange {0e-9 100e-9}
+    yrange {0e-9 2e-9}
+    zrange {0e-9 2e-9}
+    name world
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {2e-9 2e-9 2e-9}
+  atlas :Atlas
+}]
+
+# set Ms [expr {0.86e6}]
+# set A [expr {13e-12}]
+# Parameter D [expr {3e-3}]
+
+Specify Oxs_UniformExchange [subst {
+  A  13e-12
+}]
+
+#  Specify Oxs_Demag {}
+
+Specify Oxs_UniaxialAnisotropy [subst {
+    K1 {0.4e6}
+    axis {0 0 1}
+}]
+
+# u in m/s
+Specify Anv_SpinTEvolve:evolver {
+  do_precess 1
+  gamma_LL 2.21e5
+  method rkf54s
+  alpha 0.1
+  u {Oxs_UniformScalarField {
+    value 100
+	}}
+  beta 0.04
+}
+
+Specify Oxs_TimeDriver [subst {
+    evolver :evolver
+    mesh :mesh
+    stopping_time 1e-10
+    stage_count 40
+    Ms { 0.86e6 }
+    m0 { Oxs_FileVectorField {
+      atlas :Atlas
+      norm  1
+      file one-dim-dw-Oxs_MinDriver-Magnetization-00-0000084.omf
+    }}
+}]
+
+# Destination table mmArchive
+# Destination mags mmArchive
+# 
+# Schedule DataTable table Step 100
+# Schedule Oxs_MinDriver::Magnetization mags Stage 1
+
+proc initial_m { x y z } {
+	set xnorm  [expr {(2 * $x - 1)}]
+    if {$xnorm < 0} { return [list 0.1 0 -0.9] }
+    return [list 0.1 0 0.9]
+}
