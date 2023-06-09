@@ -1,0 +1,72 @@
+# MIF 2.2
+
+# -----------------------------------------------------------------------------
+
+set PI [expr {4 * atan(1.)}]
+set MU0 [expr {4 * $PI * 1e-7}]
+
+set Ms [expr {sqrt(2 / $MU0)}]
+set A [expr {1.0}]
+set Ku [expr {0.1}]
+
+SetOptions {
+    basename "std-prob-3"
+    vector_field_output_format {text %.15g}
+    vector_field_output_meshtype irregular
+}
+
+Parameter Nlex [expr 8.4]
+set Km [expr 1e6]
+set Lcube [expr 100e-9]
+set N [expr 32]
+set Lex [expr $Lcube/$Nlex]
+set cs [expr $Lcube / $N]
+
+set Ms [expr {sqrt(2 * $Km / $MU0)}]
+# Set K1 to 0.1*Km
+set K1 [expr {0.1 * $Km}]
+# Compute A so that cubesize is requested number of exchange lengths
+set A [expr {0.5 * $MU0 * $Ms * $Ms * $Lex * $Lex}]
+
+# -----------------------------------------------------------------------------
+
+Specify Oxs_BoxAtlas:Atlas [subst {
+    xrange {0 $Lcube}
+    yrange {0 $Lcube}
+    zrange {0 $Lcube}
+    name world
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$cs $cs $cs}
+  atlas :Atlas
+}]
+
+Specify Oxs_UniformExchange [subst {
+  A  $A
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+    K1 {$Ku}
+    axis {1 0 0}
+}]
+
+# Demag
+Specify Oxs_Demag {}
+
+# Conjugate Gradient Evolver
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver [subst {
+    evolver Oxs_CGEvolve
+    stopping_mxHxm 0.001
+    mesh :mesh
+    Ms { $Ms }
+    m0 { 1.0 0.0 0.0}
+}]
+
+Destination table mmArchive
+Destination mags mmArchive
+
+Schedule DataTable table Step 100
+Schedule Oxs_MinDriver::Spin mags Stage 1
