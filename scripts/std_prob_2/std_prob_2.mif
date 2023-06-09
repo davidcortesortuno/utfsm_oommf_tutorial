@@ -1,0 +1,99 @@
+# MIF 2.2
+
+# -----------------------------------------------------------------------------
+
+set PI [expr {4 * atan(1.)}]
+set MU0 [expr {4 * $PI * 1e-7}]
+
+set Lex [expr 5e-9]
+Parameter d; # Width in units of Lex -> REQUIRED
+
+set Ms [expr {1.0 / $MU0}]  ;# = 1 Tesla
+set A [expr {0.5 * $Mu0 * $Lex * $Lex * $Ms * $Ms}]
+
+set widthY [expr {$d * $Lex}]
+set lengthX [expr {5.0 * $widthY}]
+set thickZ [expr {$widthY / 10.}]
+
+# Cell size in units of Lex -> approx
+Parameter cellsize [expr 0.5]
+set csize [expr {$cellsize * $lex}]
+# ceil -> round number up, e.g. ceil(0.26) = 1.0
+# Notice: N_cells_x = ceil($lengthX / $csize)  -> rounded
+# So we get a cellsize of approximate the value specified
+set xcellsize [expr {$lengthX / ceil($lengthX / $csize)}]
+set ycellsize [expr {$widthY / ceil($widthY / $csize)}]
+set zcellsize [expr {$thickZ / ceil($thickZ / $csize)}]
+
+# Fields in mT
+set Ha [expr 100]
+set Hb [expr -15]
+set Ha [expr -100]
+
+set Ha_steps [expr 50]
+set Hb_steps [expr 15]
+set Hc_steps [expr 85]
+
+SetOptions {
+    basename "std-prob-2"
+    vector_field_output_format {text %.15g}
+    vector_field_output_meshtype irregular
+}
+
+# -----------------------------------------------------------------------------
+
+Specify Oxs_BoxAtlas:Atlas [subst {
+    xrange {0e-9 lengthX}
+    yrange {0e-9 widthY}
+    zrange {0e-9 thickZ}
+    name world
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$xcellsize $ycellsize $zcellsize}
+  atlas :Atlas
+}]
+
+Specify Oxs_UniformExchange [subst {
+  A  $A
+}]
+
+Specify Oxs_Demag {}
+
+# Field specified in miliTesla
+# User output -> specifies scaling from A/m to mT
+#                gets B in the 111 direction
+Specify Oxs_UZeeman [subst {
+  multiplier [expr {0.001 / $mu0}]
+  Hrange {
+     { $Ha $Ha $Ha     0   0   0  $Ha_steps }
+     {   0   0   0   $Hb $Hb $Hb  $Hb_steps }
+     { $Hb $Hb $Hb   $Hc $Hc $Hc  $Hc_steps }
+  }
+  user_output {
+     name Bapplied
+     source_field Field
+     select_field {1 1 1}
+     normalize 1
+     exclude_0_Ms 1
+     user_scaling [expr {1000. * $mu0}]
+     units mT
+  }
+}]
+
+# Conjugate Gradient Evolver
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver [subst {
+    evolver Oxs_CGEvolve
+    stopping_mxHxm 0.1
+    mesh :mesh
+    Ms { 0.86e6 }
+    m0 { 1.0 1.0 0.9}
+}]
+
+Destination table mmArchive
+Destination mags mmArchive
+
+Schedule DataTable table Stage 1
+Schedule Oxs_MinDriver::Magnetization mags Stage 1
