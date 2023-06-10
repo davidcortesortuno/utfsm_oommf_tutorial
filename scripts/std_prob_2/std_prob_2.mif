@@ -9,7 +9,7 @@ set Lex [expr 5e-9]
 Parameter d; # Width in units of Lex -> REQUIRED
 
 set Ms [expr {1.0 / $MU0}]  ;# = 1 Tesla
-set A [expr {0.5 * $Mu0 * $Lex * $Lex * $Ms * $Ms}]
+set A [expr {0.5 * $MU0 * $Lex * $Lex * $Ms * $Ms}]
 
 set widthY [expr {$d * $Lex}]
 set lengthX [expr {5.0 * $widthY}]
@@ -17,7 +17,7 @@ set thickZ [expr {$widthY / 10.}]
 
 # Cell size in units of Lex -> approx
 Parameter cellsize [expr 0.5]
-set csize [expr {$cellsize * $lex}]
+set csize [expr {$cellsize * $Lex}]
 # ceil -> round number up, e.g. ceil(0.26) = 1.0
 # Notice: N_cells_x = ceil($lengthX / $csize)  -> rounded
 # So we get a cellsize of approximate the value specified
@@ -28,7 +28,7 @@ set zcellsize [expr {$thickZ / ceil($thickZ / $csize)}]
 # Fields in mT
 set Ha [expr 100]
 set Hb [expr -15]
-set Ha [expr -100]
+set Hc [expr -100]
 
 set Ha_steps [expr 50]
 set Hb_steps [expr 15]
@@ -43,9 +43,9 @@ SetOptions {
 # -----------------------------------------------------------------------------
 
 Specify Oxs_BoxAtlas:Atlas [subst {
-    xrange {0e-9 lengthX}
-    yrange {0e-9 widthY}
-    zrange {0e-9 thickZ}
+    xrange {0e-9 $lengthX}
+    yrange {0e-9 $widthY}
+    zrange {0e-9 $thickZ}
     name world
 }]
 
@@ -64,7 +64,7 @@ Specify Oxs_Demag {}
 # User output -> specifies scaling from A/m to mT
 #                gets B in the 111 direction
 Specify Oxs_UZeeman [subst {
-  multiplier [expr {0.001 / $mu0}]
+  multiplier [expr {0.001 / $MU0}]
   Hrange {
      { $Ha $Ha $Ha     0   0   0  $Ha_steps }
      {   0   0   0   $Hb $Hb $Hb  $Hb_steps }
@@ -76,7 +76,7 @@ Specify Oxs_UZeeman [subst {
      select_field {1 1 1}
      normalize 1
      exclude_0_Ms 1
-     user_scaling [expr {1000. * $mu0}]
+     user_scaling [expr {1000. * $MU0}]
      units mT
   }
 }]
@@ -91,6 +91,17 @@ Specify Oxs_MinDriver [subst {
     Ms { 0.86e6 }
     m0 { 1.0 1.0 0.9}
 }]
+
+# Add:
+#    user_output {
+#       name m_dot_u
+#       source_field Magnetization
+#       select_field {1 1 1}
+#       normalize 1
+#       exclude_0_Ms 1
+#       user_scaling [expr {1.0/$Ms}]
+#       units {}
+#    }
 
 Destination table mmArchive
 Destination mags mmArchive
