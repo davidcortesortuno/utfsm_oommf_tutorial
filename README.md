@@ -34,6 +34,12 @@ The skyrmion tracking example has useful information to process OOMMF snapshot f
 
 The tutorial videos are hosted in Youtube. The first part is shown on ![https://www.youtube.com/watch?v=DYyx9wdiO_A](https://www.youtube.com/watch?v=DYyx9wdiO_A)
 
+# Data processing
+
+The OOMMF output files can be processed easily using the Python library ![OOMMFPy](https://github.com/davidcortesortuno/oommfpy). This library includes a tool to convert `omf` files to `vtk` for 3D visualization.
+
+However, any programming language and software can be used to read and process OOMMF's text and binary files. Take a look at OOMMF's in-built tools such as `avf2odt` or `odtcols`.
+
 # References
 
 Checkout the slides of the MuMAx3 Workshop !(https://github.com/davidcortesortuno/alma_tutorials_mumax3_workshop)[https://github.com/davidcortesortuno/alma_tutorials_mumax3_workshop] as a reference for exercises and examples
