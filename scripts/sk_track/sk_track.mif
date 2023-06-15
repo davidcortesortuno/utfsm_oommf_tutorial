@@ -1,0 +1,100 @@
+# MIF 2.2
+
+# -----------------------------------------------------------------------------
+
+set PI [expr {4 * atan(1.)}]
+set MU0 [expr {4 * $PI * 1e-7}]
+
+set LENGTH [expr {200e-9}]
+set WIDTH [expr {40e-9}]
+set THICKNESS [expr {0.4e-9}]
+
+set DX [expr {1e-9}]
+set DY [expr {1e-9}]
+set DZ [expr {0.4e-9}]
+
+set Ms [expr {580e3}]
+set A [expr {15e-12}]
+set KU [expr {0.8e6}]
+Parameter D [expr {3e-3}]
+# set BZ [expr {1.0}]
+
+set ALPHA [expr {0.95}]
+set GAMMA [expr {2.21e5}]
+
+SetOptions {
+    basename "sk-track"
+    vector_field_output_meshtype irregular
+    vector_field_output_format {binary 8}
+}
+
+# -----------------------------------------------------------------------------
+
+Specify Oxs_BoxAtlas:Atlas [subst {
+    xrange {0e-9 $LENGTH}
+    yrange {0e-9 $WIDTH}
+    zrange {0e-9 $THICKNESS}
+    name world
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize {$DX $DY $DZ}
+  atlas :Atlas
+}]
+
+Specify Oxs_UniformExchange [subst {
+  A  $A
+}]
+
+#  Specify Oxs_Demag {}
+
+# Uniform DMI is used here
+Specify Oxs_DMExchange6Ngbr:DMEx [subst {
+    default_D $D
+    atlas :Atlas
+    D {
+        world world $D
+    }
+}]
+
+Specify Oxs_UniaxialAnisotropy [subst {
+    K1 $KU
+    axis {0 0 1}
+}]
+
+# Conjugate Gradient Evolver
+Specify Oxs_CGEvolve {}
+
+Specify Oxs_MinDriver [subst {
+    evolver Oxs_CGEvolve
+    stopping_mxHxm 0.1
+    total_iteration_limit 1200
+    mesh :mesh
+    Ms $Ms
+    m0 { Oxs_ScriptVectorField {
+     atlas :Atlas
+     script { dot }
+     norm 1.0
+     script_args { relpt }
+    }}
+}]
+
+Destination table mmArchive
+Destination mags mmArchive
+
+Schedule DataTable table Step 200
+Schedule DataTable table Stage 1
+Schedule Oxs_MinDriver::Spin mags Stage 1
+# Schedule Oxs_MinDriver::Magnetization mags Step 1000
+
+# =============================================================================
+
+proc dot { x y z } {
+  set sk_x [expr 0.2]
+  set sk_y [expr 0.5]
+  set xrel [expr ($x * 5) - ($sk_x * 5)]
+  set yrel [expr $y - $sk_y]
+  set radius [expr {sqrt($xrel * $xrel + $yrel * $yrel)}]
+  if {$radius < 0.15} { return [list 0.0 0.0 -1.0] }
+  return [list 0.0 0 1.0]
+}
